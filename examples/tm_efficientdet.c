@@ -451,8 +451,6 @@ int tengine_detect(const char* model_file, const char* image_file, int img_h, in
     free(anchors_x1);
     free(anchors_y0);
     free(anchors_y1);
-    free(output_data_regression);
-    free(output_data_classification);
 
     // filter boxes with confidence threshold
     Box_t* proposals_over_threshold = malloc(sizeof(Box_t) * num_proposals_over_threshold);
