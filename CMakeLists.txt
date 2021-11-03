@@ -51,11 +51,13 @@ ENDIF()
 # Module options
 OPTION (TENGINE_BUILD_BENCHMARK             "Build benchmark"                           ON)
 OPTION (TENGINE_BUILD_EXAMPLES              "Build examples"                            ON)
+OPTION (TENGINE_BUILD_DEMO                  "Build demos"                               OFF)
 OPTION (TENGINE_BUILD_TESTS                 "Build tests"                               OFF)
 OPTION (TENGINE_BUILD_CPP_API               "Build C++ API"                             OFF)
 
 # Tools options
 # Tools
+OPTION (TENGINE_BUILD_CONVERT_TOOL          "Build convert tool"                        OFF)
 OPTION (TENGINE_BUILD_QUANT_TOOL            "Build quantization tool"                   OFF)
 
 # Multithreading option
@@ -73,8 +75,10 @@ OPTION (TENGINE_STANDALONE_HCL_AUTO_LOAD    "Auto load standalone hcl lib"      
 OPTION (TENGINE_ENABLE_ACL                  "With Arm Compute Library support"          OFF)
 OPTION (TENGINE_ENABLE_CUDA                 "With nVIDIA CUDA support"                  OFF)
 OPTION (TENGINE_ENABLE_OPENCL               "With Khronos OpenCL support"               OFF)
+OPTION (TENGINE_ENABLE_OPENDLA              "With Khronos OpenDLA support"              OFF)
 OPTION (TENGINE_ENABLE_TENSORRT             "With nVIDIA TensorRT support"              OFF)
 OPTION (TENGINE_ENABLE_TIM_VX               "With VeriSilicon TIM-VX support"           OFF)
+OPTION (TENGINE_ENABLE_TORCH                "With libTorch support"                     OFF)
 OPTION (TENGINE_ENABLE_NNIE                 "With HiSilicon NNIE support"               OFF)
 OPTION (TENGINE_ENABLE_VULKAN               "With Khronos Vulkan GPU compute support"   OFF)
 
@@ -84,10 +88,16 @@ OPTION (TENGINE_DEBUG_TIME                  "Print execution time for each layer
 OPTION (TENGINE_DEBUG_MEM_STAT              "Print memory status for library"           OFF)
 OPTION (TENGINE_ENABLE_ALL_SYMBOL           "All symbol visible"                        OFF)
 
+# Experimental optinos
+OPTION (TENGINE_ENABLE_MODEL_CACHE          "NPU kernel cache file option"              OFF)
+
+# Online report
+OPTION (TENGINE_ONLINE_REPORT               "online report"                             ON)
 
 # Do check list
 INCLUDE ("${CMAKE_CURRENT_SOURCE_DIR}/cmake/check.cmake")
 INCLUDE ("${CMAKE_CURRENT_SOURCE_DIR}/cmake/cuda.cmake")
+INCLUDE ("${CMAKE_CURRENT_SOURCE_DIR}/cmake/torch.cmake")
 INCLUDE ("${CMAKE_CURRENT_SOURCE_DIR}/cmake/registry.cmake")
 INCLUDE ("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utility.cmake")
 
@@ -100,11 +110,15 @@ ENABLE_LANGUAGE (ASM)
 # Enable cmake ctest module
 ENABLE_TESTING ()
 
+# Set cmake default folder name
+SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
+SET_PROPERTY(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "cmake")
+
 # Main source files
 ADD_SUBDIRECTORY (source)
 
 # Internal modules, not for open source part
-INCLUDE (internal/exend.cmake OPTIONAL)
+INCLUDE (internal/extension.cmake OPTIONAL)
 
 IF (TENGINE_BUILD_BENCHMARK)
     ADD_SUBDIRECTORY(benchmark)
@@ -114,12 +128,20 @@ IF (TENGINE_BUILD_EXAMPLES)
     ADD_SUBDIRECTORY(examples)
 ENDIF()
 
+IF (TENGINE_BUILD_DEMO)
+    ADD_SUBDIRECTORY(demos)
+ENDIF()
+
 IF (TENGINE_BUILD_TESTS)
     ADD_SUBDIRECTORY(tests)
 ENDIF()
 
 IF (TENGINE_BUILD_QUANT_TOOL)
     ADD_SUBDIRECTORY(tools/quantize)
+ENDIF()
+
+IF (TENGINE_BUILD_CONVERT_TOOL)
+    ADD_SUBDIRECTORY(tools/convert_tool)
 ENDIF()
 
 # Report summary

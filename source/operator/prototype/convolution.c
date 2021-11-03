@@ -32,14 +32,13 @@
 #include "utility/sys_port.h"
 #include "utility/log.h"
 
-
 static int infer_shape(ir_node_t* node)
 {
     ir_graph_t* graph = node->graph;
     ir_tensor_t* input = get_ir_graph_tensor(graph, node->input_tensors[0]);
     ir_tensor_t* output = get_ir_graph_tensor(graph, node->output_tensors[0]);
 
-    struct conv_param* conv_param = ( struct conv_param* )(node->op.param_mem);
+    struct conv_param* conv_param = (struct conv_param*)(node->op.param_mem);
 
     int n = input->dims[0];
     int h, w;
@@ -70,7 +69,8 @@ static int infer_shape(ir_node_t* node)
         return -1;
     }
 
-    int out_c = conv_param->output_channel;
+    ir_tensor_t* weight = get_ir_graph_tensor(graph, node->input_tensors[1]);
+    int out_c = weight->dims[0];
     int out_h, out_w;
 
     /* handle the same padding case, which pad_h0 and pad_h1 is -1 (SAME_UPPER)
@@ -97,8 +97,7 @@ static int infer_shape(ir_node_t* node)
     }
     else
     {
-        out_h = (h - conv_param->dilation_h * (conv_param->kernel_h - 1) - 1 + conv_param->pad_h0 + conv_param->pad_h1) /
-                conv_param->stride_h + 1;
+        out_h = (h - conv_param->dilation_h * (conv_param->kernel_h - 1) - 1 + conv_param->pad_h0 + conv_param->pad_h1) / conv_param->stride_h + 1;
     }
 
     if (conv_param->pad_w0 < 0)
@@ -122,8 +121,7 @@ static int infer_shape(ir_node_t* node)
     }
     else
     {
-        out_w = (w - conv_param->dilation_w * (conv_param->kernel_w - 1) - 1 + conv_param->pad_w0 + conv_param->pad_w1) /
-                conv_param->stride_w + 1;
+        out_w = (w - conv_param->dilation_w * (conv_param->kernel_w - 1) - 1 + conv_param->pad_w0 + conv_param->pad_w1) / conv_param->stride_w + 1;
     }
 
     int dims[4];
@@ -133,7 +131,7 @@ static int infer_shape(ir_node_t* node)
     dims[2] = out_h;
     dims[3] = out_w;
 
-    for (int i=0; i<4; i++)
+    for (int i = 0; i < 4; i++)
     {
         if (dims[i] == 0)
         {
@@ -146,10 +144,9 @@ static int infer_shape(ir_node_t* node)
     return 0;
 }
 
-
 static int init_op(ir_op_t* op)
 {
-    struct conv_param* conv_param = ( struct conv_param* )sys_malloc(sizeof(struct conv_param));
+    struct conv_param* conv_param = (struct conv_param*)sys_malloc(sizeof(struct conv_param));
 
     if (conv_param == NULL)
     {
@@ -180,12 +177,10 @@ static int init_op(ir_op_t* op)
     return 0;
 }
 
-
 static void release_op(ir_op_t* op)
 {
     sys_free(op->param_mem);
 }
-
 
 int register_convolution_op()
 {
@@ -197,7 +192,6 @@ int register_convolution_op()
 
     return register_op(OP_CONV, OP_CONV_NAME, &m);
 }
-
 
 int unregister_convolution_op()
 {

@@ -31,11 +31,13 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 struct node;
 struct tensor;
 struct graph;
-
 
 /*!
  * @struct ir_node_t
@@ -43,22 +45,21 @@ struct graph;
  */
 typedef struct node
 {
-    uint16_t  index;            //!< the index of a node
-    uint8_t   dynamic_shape;    //!< flag of dynamic shape
-    uint8_t   input_num;        //!< count of input tensor
-    uint8_t   output_num;       //!< count of output tensor
-    uint8_t   node_type;        //!< type of node: { input, output, intermediate }
-    int8_t    subgraph_idx;     //!< id of the owner subgraph
+    uint16_t index;        //!< the index of a node
+    uint8_t dynamic_shape; //!< flag of dynamic shape
+    uint8_t input_num;     //!< count of input tensor
+    uint8_t output_num;    //!< count of output tensor
+    uint8_t node_type;     //!< type of node: { input, output, intermediate }
+    int8_t subgraph_idx;   //!< id of the owner subgraph
 
-    uint16_t* input_tensors;    //!< id array of input tensor
-    uint16_t* output_tensors;   //!< id array of output tensor
+    uint16_t* input_tensors;  //!< id array of input tensor
+    uint16_t* output_tensors; //!< id array of output tensor
 
-    char* name;                 //!< name of a node
+    char* name; //!< name of a node
 
-    struct op op;               //!< operator of a node
-    struct graph* graph;        //!< pointer of the related graph
+    struct op op;        //!< operator of a node
+    struct graph* graph; //!< pointer of the owner graph
 } ir_node_t;
-
 
 /*!
  * @brief Create a node for a graph.
@@ -72,7 +73,6 @@ typedef struct node
  */
 ir_node_t* create_ir_node(struct graph* ir_graph, const char* node_name, int op_type, int op_version);
 
-
 /*!
  * @brief Destroy a node.
  *
@@ -83,7 +83,6 @@ ir_node_t* create_ir_node(struct graph* ir_graph, const char* node_name, int op_
  */
 void destroy_ir_node(struct graph* ir_graph, ir_node_t* ir_node);
 
-
 /*!
  * @brief  Set node name from id, for anonymity ones.
  *
@@ -92,7 +91,6 @@ void destroy_ir_node(struct graph* ir_graph, ir_node_t* ir_node);
  * @return char array of the name.
  */
 char* create_ir_node_name_from_index(int index);
-
 
 /*!
  * @brief  Get node id from name, for anonymity ones.
@@ -108,7 +106,6 @@ char* create_ir_node_name_from_index(int index);
  */
 int get_ir_node_index_from_name(struct graph* ir_graph, const char* node_name);
 
-
 /*!
  * @brief  Mark a tensor as node a specific input tensor.
  *
@@ -119,7 +116,6 @@ int get_ir_node_index_from_name(struct graph* ir_graph, const char* node_name);
  * @return statue value, 0 success, other value failure.
  */
 int set_ir_node_input_tensor(ir_node_t* ir_node, int input_idx, struct tensor* tensor);
-
 
 /*!
  * @brief  Mark a tensor as node a specific output tensor.
@@ -132,7 +128,6 @@ int set_ir_node_input_tensor(ir_node_t* ir_node, int input_idx, struct tensor* t
  */
 int set_ir_node_output_tensor(ir_node_t* ir_node, int output_idx, struct tensor* tensor);
 
-
 /*!
  * @brief  Dump the node.
  *
@@ -140,3 +135,7 @@ int set_ir_node_output_tensor(ir_node_t* ir_node, int output_idx, struct tensor*
  * @param [in]  node: specific node.
  */
 void dump_ir_node(struct graph* ir_graph, ir_node_t* ir_node);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

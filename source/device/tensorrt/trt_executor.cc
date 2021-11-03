@@ -24,6 +24,7 @@
 
 #include "trt_executor.hpp"
 #include "trt_helper.hpp"
+#include "trt_dump.hpp"
 
 EXPORT_BEGIN
 #include "convolution_param.h"
@@ -34,9 +35,7 @@ EXPORT_FINISH
 
 #include <NvInferRuntime.h>
 
-
 static Logger gLogger(nvinfer1::ILogger::Severity::kERROR);
-
 
 int TensorRTEngine::get_type(int mode, nvinfer1::DataType& type)
 {
@@ -114,7 +113,6 @@ void TensorRTEngine::SetRange(struct graph* ir_graph, uint16_t id, nvinfer1::ITe
         this->SetRange(ir_tensor, trt_tensor);
     }
 }
-
 
 int TensorRTEngine::Build(struct subgraph* subgraph)
 {
@@ -247,9 +245,19 @@ int TensorRTEngine::Build(struct subgraph* subgraph)
                 }
                 break;
             }
+            case OP_INSTANCENORM:
+            {
+                if (!AddInstanceNormNode(ir_graph, ir_node))
+                {
+                    TLOG_ERR("Tengine: Cannot add InstanceNorm op(%d).\n", ir_node->index);
+                    return -6;
+                }
+                break;
+            }
             case OP_INPUT:
                 continue;
-            case OP_INTERP: {
+            case OP_INTERP:
+            {
                 if (!AddInterpNode(ir_graph, ir_node))
                 {
                     TLOG_ERR("Tengine: Cannot add FullyConnected op(%d).\n", ir_node->index);
@@ -262,6 +270,14 @@ int TensorRTEngine::Build(struct subgraph* subgraph)
                 if (!AddMishNode(ir_graph, ir_node))
                 {
                     TLOG_ERR("Tengine: Cannot add Mish op(%d).\n", ir_node->index);
+                    return -6;
+                }
+                break;
+            }
+            case OP_PAD: {
+                if (!AddPadNode(ir_graph, ir_node))
+                {
+                    TLOG_ERR("Tengine: Cannot add Pad op(%d).\n", ir_node->index);
                     return -6;
                 }
                 break;
@@ -284,10 +300,19 @@ int TensorRTEngine::Build(struct subgraph* subgraph)
             }
             case OP_RELU:
             case OP_RELU1:
-            case OP_RELU6: {
+            case OP_RELU6:
+            case OP_CLIP: {
                 if (!addReLUNode(ir_graph, ir_node))
                 {
                     TLOG_ERR("Tengine: Cannot add ReLU op(%d).\n", ir_node->index);
+                    return -6;
+                }
+                break;
+            }
+            case OP_REDUCTION: {
+                if (!AddReductionNode(ir_graph, ir_node))
+                {
+                    TLOG_ERR("Tengine: Cannot add Reduction op(%d).\n", ir_node->index);
                     return -6;
                 }
                 break;
@@ -296,6 +321,15 @@ int TensorRTEngine::Build(struct subgraph* subgraph)
                 if (!AddReshapeNode(ir_graph, ir_node))
                 {
                     TLOG_ERR("Tengine: Cannot add Reshape op(%d).\n", ir_node->index);
+                    return -6;
+                }
+                break;
+            }
+            case OP_RESIZE:
+            {
+                if (!AddResizeNode(ir_graph, ir_node))
+                {
+                    TLOG_ERR("Tengine: Cannot add Resize op(%d).\n", ir_node->index);
                     return -6;
                 }
                 break;
@@ -317,11 +351,38 @@ int TensorRTEngine::Build(struct subgraph* subgraph)
                 }
                 break;
             }
+            case OP_SPLIT:
+            {
+                if(!AddSplitNode(ir_graph, ir_node))
+                {
+                    TLOG_ERR("Tengine: Cannot add Split op(%d).\n", ir_node->index);
+                    return -6;
+                }
+                break;
+            }
+            case OP_SQUEEZE:
+            {
+                if(!AddSqueezeNode(ir_graph, ir_node))
+                {
+                    TLOG_ERR("Tengine: Cannot add Squeeze op(%d).\n", ir_node->index);
+                    return -6;
+                }
+                break;
+            }
+            case OP_TANH:
+            {
+                if(!AddTanhNode(ir_graph, ir_node))
+                {
+                    TLOG_ERR("Tengine: Cannot add Tanh op(%d).\n", ir_node->index);
+                    return -6;
+                }
+                break;
+            }
             case OP_TRANSPOSE:
             {
                 if(!AddTranspose(ir_graph, ir_node))
                 {
-                    TLOG_ERR("Tengine: Cannot add Softmax op(%d).\n", ir_node->index);
+                    TLOG_ERR("Tengine: Cannot add Transpose op(%d).\n", ir_node->index);
                     return -6;
                 }
                 break;
@@ -376,6 +437,12 @@ bool TensorRTEngine::AddTensor(struct graph* ir_graph, struct tensor *ir_tensor)
 
     switch (dim)
     {
+        case 2:
+        {
+            nvinfer1::Dims2 dim2(dims[0],dims[1]);
+            trt_tensor = this->network->addInput(ir_tensor->name, nvinfer1::DataType::kFLOAT, dim2);
+            break;
+        }
         case 3:
         {
             nvinfer1::Dims3 dim3(dims[0],dims[1],dims[2]);
@@ -453,9 +520,10 @@ bool TensorRTEngine::AddTensor(struct graph* ir_graph, struct tensor *ir_tensor)
     return true;
 }
 
-
 int TensorRTEngine::PreRun(struct subgraph* subgraph, struct trt_option* options)
 {
+    dump_sub_graph_trt(subgraph);
+
     trt_opt_t* opt = &this->option;
     if (nullptr != options)
     {
@@ -747,7 +815,7 @@ int TensorRTEngine::PoseRun(struct subgraph *subgraph)
 }
 
 
-int TensorRTEngine::SetOption(trt_opt_t *opt)
+void TensorRTEngine::SetOption(trt_opt_t *opt)
 {
     int deviceCount;
     cudaError_t cudaError;

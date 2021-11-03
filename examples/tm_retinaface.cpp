@@ -20,6 +20,8 @@
 /*
  * Copyright (c) 2020, OPEN AI LAB
  * Author: jxyang@openailab.com
+ * 
+ * original model: https://github.com/deepinsight/insightface/tree/master/RetinaFace#retinaface-pretrained-models
  */
 
 /*
@@ -72,7 +74,7 @@ const char* landmark_name[3] = {"face_rpn_landmark_pred_stride32", "face_rpn_lan
 
 const int stride[3] = {32, 16, 8};
 
-const float scales[3][2] = {{32.f, 16.f}, {8.f, 4.f}, {2.f, 1.f}};
+const float g_scales[3][2] = {{32.f, 16.f}, {8.f, 4.f}, {2.f, 1.f}};
 
 struct Size2i
 {
@@ -114,7 +116,7 @@ void draw_target(const std::vector<Face2f>& all_pred_boxes, image img)
     const char* class_names[] = {"faces"};
 
     fprintf(stdout, "detected face num: %zu\n", all_pred_boxes.size());
-    for (int b = 0; b < ( int )all_pred_boxes.size(); b++)
+    for (int b = 0; b < (int)all_pred_boxes.size(); b++)
     {
         Face2f box = all_pred_boxes[b];
 
@@ -127,7 +129,7 @@ void draw_target(const std::vector<Face2f>& all_pred_boxes, image img)
             draw_circle(img, box.landmark[l].x, box.landmark[l].y, 1, 0, 128, 128);
         }
     }
-    save_image(img, "tengine_example_out");
+    save_image(img, "retinaface_out");
 }
 
 float iou(const Face2f& a, const Face2f& b)
@@ -165,7 +167,7 @@ void nms_sorted_boxes(const std::vector<Face2f>& face_objects, std::vector<int>&
         const Face2f& a = face_objects[i];
 
         int keep = 1;
-        for (int j = 0; j < ( int )picked.size(); j++)
+        for (int j = 0; j < (int)picked.size(); j++)
         {
             const Face2f& b = face_objects[picked[j]];
 
@@ -226,22 +228,22 @@ std::vector<Box2f> generate_anchors(int base_size, const std::vector<float>& rat
 
     std::vector<Box2f> anchors(num_ratio * num_scale);
 
-    const float cx = ( float )base_size * 0.5f;
-    const float cy = ( float )base_size * 0.5f;
+    const float cx = (float)base_size * 0.5f;
+    const float cy = (float)base_size * 0.5f;
 
     for (int i = 0; i < num_ratio; i++)
     {
         float ar = ratios[i];
 
-        int r_w = ( int )round(( float )base_size / sqrt(ar));
-        int r_h = ( int )round(( float )r_w * ar);    // round(base_size * sqrt(ar));
+        int r_w = (int)round((float)base_size / sqrt(ar));
+        int r_h = (int)round((float)r_w * ar); // round(base_size * sqrt(ar));
 
         for (int j = 0; j < num_scale; j++)
         {
             float scale = scales[j];
 
-            float rs_w = ( float )r_w * scale;
-            float rs_h = ( float )r_h * scale;
+            float rs_w = (float)r_w * scale;
+            float rs_h = (float)r_h * scale;
 
             Box2f& anchor = anchors[i * num_scale + j];
 
@@ -335,46 +337,12 @@ static void generate_proposals(std::vector<Box2f>& anchors, int feat_stride, con
                     faces.push_back(obj);
                 }
 
-                anchor_x += ( float )feat_stride;
+                anchor_x += (float)feat_stride;
             }
 
-            anchor_y += ( float )feat_stride;
+            anchor_y += (float)feat_stride;
         }
     }
-}
-
-int get_input_data(const char* image_file, const int& max_size, const int& target_size, std::vector<float>& image_data,
-                   Size2i& ori_size, Size2i& dst_size, float& scale)
-{
-    image img = imread(image_file);
-
-    ori_size.width = img.w;
-    ori_size.height = img.h;
-
-    img = image_premute(img);
-
-    int im_size_min = std::min(img.h, img.w);
-    int im_size_max = std::max(img.h, img.w);
-
-    scale = float(target_size) / float(im_size_min);
-
-    if (scale * ( float )im_size_max > ( float )max_size)
-        scale = float(max_size) / float(im_size_max);
-
-    dst_size.width = ( int )round(( float )img.w * scale);
-    dst_size.height = ( int )round(( float )img.h * scale);
-
-    image resImg = resize_image(img, dst_size.width, dst_size.height);
-    int img_size = dst_size.height * dst_size.width * 3;
-
-    image_data.resize(img_size);
-
-    memcpy(image_data.data(), resImg.data, img_size * sizeof(float));
-
-    free_image(img);
-    free_image(resImg);
-
-    return img_size;
 }
 
 int get_input_data(const char* image_file, std::vector<float>& image_data, Size2i& size)
@@ -386,7 +354,7 @@ int get_input_data(const char* image_file, std::vector<float>& image_data, Size2
 
     int img_size = img.w * img.h * img.c;
 
-    img = image_premute(img);
+    img = image_permute(img);
 
     image_data.resize(img_size);
 
@@ -416,26 +384,26 @@ int main(int argc, char* argv[])
     {
         switch (res)
         {
-            case 'm':
-                model_file = optarg;
-                break;
-            case 'i':
-                image_file = optarg;
-                break;
-            case 'r':
-                repeat_count = atoi(optarg);
-                break;
-            case 't':
-                num_thread = atoi(optarg);
-                break;
-            case 'n':
-                device_name = optarg;
-                break;
-            case 'h':
-                show_usage();
-                return 0;
-            default:
-                break;
+        case 'm':
+            model_file = optarg;
+            break;
+        case 'i':
+            image_file = optarg;
+            break;
+        case 'r':
+            repeat_count = atoi(optarg);
+            break;
+        case 't':
+            num_thread = atoi(optarg);
+            break;
+        case 'n':
+            device_name = optarg;
+            break;
+        case 'h':
+            show_usage();
+            return 0;
+        default:
+            break;
         }
     }
 
@@ -462,7 +430,7 @@ int main(int argc, char* argv[])
     opt.num_thread = num_thread;
     opt.cluster = TENGINE_CLUSTER_ALL;
     opt.precision = TENGINE_MODE_FP32;
-    opt.affinity = 0;       
+    opt.affinity = 0;
 
     /* inital tengine */
     int ret = init_tengine();
@@ -512,11 +480,11 @@ int main(int argc, char* argv[])
     }
 
     /* set the data mem to input tensor */
-    if (set_tensor_buffer(input_tensor, image_data.data(), img_size * 4) < 0)
+    if (set_tensor_buffer(input_tensor, image_data.data(), img_size * sizeof(float)) < 0)
     {
         printf("Set input tensor buffer failed\n");
         return -1;
-    }    
+    }
 
     /* prerun graph, set work options(num_thread, cluster, precision) */
     if (0 != prerun_graph_multithread(graph, opt))
@@ -545,7 +513,7 @@ int main(int argc, char* argv[])
     }
     printf("img_h, img_w : %d, %d\n", image_size.height, image_size.width);
     printf("Repeat %d times, thread %d, avg time %.2f ms, max_time %.2f ms, min_time %.2f ms\n", repeat_count,
-           num_thread, total_time / ( float )repeat_count, max_time, min_time);
+           num_thread, total_time / (float)repeat_count, max_time, min_time);
     printf("--------------------------------------\n");
 
     /* process the detection result */
@@ -568,9 +536,9 @@ int main(int argc, char* argv[])
         get_tensor_shape(bbox_blob_tensor, bbox_blob_dims, MAX_SHAPE_DIM_NUM);
         get_tensor_shape(landmark_blob_tensor, landmark_blob_dims, MAX_SHAPE_DIM_NUM);
 
-        float* score_blob = ( float* )get_tensor_buffer(score_blob_tensor);
-        float* bbox_blob = ( float* )get_tensor_buffer(bbox_blob_tensor);
-        float* landmark_blob = ( float* )get_tensor_buffer(landmark_blob_tensor);
+        float* score_blob = (float*)get_tensor_buffer(score_blob_tensor);
+        float* bbox_blob = (float*)get_tensor_buffer(bbox_blob_tensor);
+        float* landmark_blob = (float*)get_tensor_buffer(landmark_blob_tensor);
 
         const int base_size = 16;
         const int feat_stride = stride[stride_index];
@@ -579,8 +547,8 @@ int main(int argc, char* argv[])
         current_ratios[0] = 1.f;
 
         std::vector<float> current_scales(2);
-        current_scales[0] = scales[stride_index][0];
-        current_scales[1] = scales[stride_index][1];
+        current_scales[0] = g_scales[stride_index][0];
+        current_scales[1] = g_scales[stride_index][1];
 
         const float threshold = CONF_THRESH;
 
@@ -613,10 +581,10 @@ int main(int argc, char* argv[])
         float x1 = x0 + face_objects[i].rect.w;
         float y1 = y0 + face_objects[i].rect.h;
 
-        x0 = std::max(std::min(x0, ( float )image_size.width - 1), 0.f);
-        y0 = std::max(std::min(y0, ( float )image_size.height - 1), 0.f);
-        x1 = std::max(std::min(x1, ( float )image_size.width - 1), 0.f);
-        y1 = std::max(std::min(y1, ( float )image_size.height - 1), 0.f);
+        x0 = std::max(std::min(x0, (float)image_size.width - 1), 0.f);
+        y0 = std::max(std::min(y0, (float)image_size.height - 1), 0.f);
+        x1 = std::max(std::min(x1, (float)image_size.width - 1), 0.f);
+        y1 = std::max(std::min(y1, (float)image_size.height - 1), 0.f);
 
         face_objects[i].rect.x = x0;
         face_objects[i].rect.y = y0;

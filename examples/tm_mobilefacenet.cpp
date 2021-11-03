@@ -35,7 +35,7 @@
 #define DEFAULT_MEAN3 122.679
 
 #define MOBILE_FACE_HEIGHT 110
-#define MOBILE_FACE_WIDTH 110
+#define MOBILE_FACE_WIDTH  110
 
 graph_t graph;
 tensor_t input_tensor;
@@ -70,7 +70,6 @@ int getFeature(const char* imagefile, float* feature)
     int height = MOBILE_FACE_HEIGHT;
     int width = MOBILE_FACE_WIDTH;
     int img_size = height * width * 3;
-    int dims[] = {1, 3, height, width};
     float means[3] = {DEFAULT_MEAN1, DEFAULT_MEAN2, DEFAULT_MEAN3};
     float scales[3] = {1, 1, 1};
     std::vector<float> input_data(img_size);
@@ -81,7 +80,7 @@ int getFeature(const char* imagefile, float* feature)
         fprintf(stderr, "run_graph fail");
         return -1;
     }
-    float* data = ( float* )get_tensor_buffer(output_tensor);
+    float* data = (float*)get_tensor_buffer(output_tensor);
     int outsize;
     outsize = get_tensor_buffer_size(output_tensor) / sizeof(float);
     for (int i = 0; i < outsize; i++)
@@ -127,20 +126,20 @@ int main(int argc, char* argv[])
     {
         switch (res)
         {
-            case 'm':
-                model_file = optarg;
-                break;
-            case 'a':
-                person_a = optarg;
-                break;
-            case 'b':
-                person_b = optarg;
-                break;
-            case 'h':
-                show_usage();
-                return 0;
-            default:
-                break;
+        case 'm':
+            model_file = optarg;
+            break;
+        case 'a':
+            person_a = optarg;
+            break;
+        case 'b':
+            person_b = optarg;
+            break;
+        case 'h':
+            show_usage();
+            return 0;
+        default:
+            break;
         }
     }
 
